@@ -638,7 +638,8 @@ pub fn swap(
 
     let offer_pool: Asset;
     let ask_pool: Asset;
-
+    
+    // get offer and ask pool values
     if offer_asset.info.equal(&pools[0].info) {
         offer_pool = pools[0].clone();
         ask_pool = pools[1].clone();
@@ -657,6 +658,8 @@ pub fn swap(
     )?;
 
     let offer_amount = offer_asset.amount;
+    
+    // compute the return, spread and commission amounts
     let (return_amount, spread_amount, commission_amount) = compute_swap(
         offer_pool.amount,
         ask_pool.amount,
@@ -676,11 +679,15 @@ pub fn swap(
     // Compute the tax for the receiving asset (if it is a native one)
     let return_asset = Asset {
         info: ask_pool.info.clone(),
-        amount: return_amount,
+        amount: return_amount, // the value of tokens to transfer out is set here and called later in info_msg
     };
 
     let tax_amount = return_asset.compute_tax(&deps.querier)?;
+    
+    // receiver is address receiving the new tokens (could be sender or to)
     let receiver = to.unwrap_or_else(|| sender.clone());
+    
+    // transfer the tokens to receiver
     let mut messages: Vec<CosmosMsg> =
         vec![return_asset.into_msg(&deps.querier, receiver.clone())?];
 
@@ -710,7 +717,7 @@ pub fn swap(
     Ok(Response::new()
         .add_messages(
             // 1. send collateral tokens from the contract to a user
-            // 2. send inactive commission fees to the Maker ontract
+            // 2. send inactive commission fees to the Maker contract
             messages,
         )
         .add_attribute("action", "swap")
